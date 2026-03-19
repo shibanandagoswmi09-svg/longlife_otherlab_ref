@@ -5,16 +5,23 @@ import io
 st.set_page_config(page_title="Lab Referral Report Generator", page_icon="🏥", layout="centered")
 
 st.title("🏥 Lab Referral Report Generator")
-st.markdown("Upload your **Calculation Sheet (CSV)** below to instantly generate the 3 Display Option Pivot tables.")
+st.markdown("Upload your **Calculation Sheet (Excel or CSV)** below to instantly generate the 3 Display Option Pivot tables.")
 
-# 1. The File Uploader
-uploaded_file = st.file_uploader("Upload Calculation Sheet", type=["csv"])
+# 1. The File Uploader (Now accepts BOTH csv and xlsx)
+uploaded_file = st.file_uploader("Upload Calculation Sheet", type=["csv", "xlsx", "xls"])
 
 if uploaded_file:
     try:
         with st.spinner("Generating reports..."):
-            # 2. Read the uploaded file directly (skipping the blank top row)
-            df = pd.read_csv(uploaded_file, skiprows=1)
+            
+            # 2. Smartly Read the File based on its extension
+            file_extension = uploaded_file.name.split('.')[-1].lower()
+            
+            if file_extension == 'csv':
+                df = pd.read_csv(uploaded_file, skiprows=1)
+            else:
+                # For Excel files, we read the active sheet and skip the first row
+                df = pd.read_excel(uploaded_file, skiprows=1)
 
             # 3. Clean the data
             df_clean = df.dropna(subset=['Other Lab Refer']).copy()
