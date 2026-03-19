@@ -24,16 +24,31 @@ if uploaded_file is not None:
                 st.error("❌ 'Other Lab Refer' column ti file e nei! Kono banan vul ache kina check korun.")
                 st.stop()
             
-            # 3. Calculation Logic
-            df['Discount Allowed'] = 0 
-            df['Balance Discount'] = 0.25 
-            df['Net Payable'] = df['Net Amount'] * df['Balance Discount']
-            df['Other Lab Refer Payable'] = df.apply(lambda x: 0 if x['Other Lab Refer'] == 'N.A.' else (x['Net Amount'] * 0.10), axis=1)
+            # 3. Asol Calculation Logic (Boss er dewa logic)
+            def calculate_referral(row):
+                # Jodi referral N.A. hoy ba Gross Amount 0 hoy tahole 0 taka
+                if row['Other Lab Refer'] == 'N.A.' or row['Gross Amount'] == 0:
+                    return 0
+                
+                # Discount koto percentage dewa hoyeche seta ber kora
+                discount_pct = row['Discount'] / row['Gross Amount']
+                
+                # Jodi discount 25% (0.25) ba tar beshi hoy, tahole commission 0
+                if discount_pct >= 0.25:
+                    return 0
+                else:
+                    # 25% theke discount percentage baad diye balance percentage ber kora
+                    balance_pct = 0.25 - discount_pct
+                    # Net amount er upor balance percentage apply kora
+                    return row['Net Amount'] * balance_pct
+
+            # Formula ta original datar upor chalano holo ar round kora holo
+            df['Other Lab Refer Payable'] = df.apply(calculate_referral, axis=1).round(2)
 
         st.success("✅ Report successfully generate hoyeche!")
 
         # ---------------------------------------------------------
-        # 4. TOP SUMMARY RESULT (Ekdom upore dekhabe)
+        # 4. TOP SUMMARY RESULT
         # ---------------------------------------------------------
         st.header("🏆 Main Result (Summary)")
         
@@ -52,7 +67,7 @@ if uploaded_file is not None:
         summary_df.columns = ['Lab Name', 'Total Payable Amount']
         st.dataframe(summary_df, use_container_width=True)
 
-        st.divider() # Ekta line tene dewa holo
+        st.divider()
 
         # ---------------------------------------------------------
         # 5. FULL DATA VIEW
