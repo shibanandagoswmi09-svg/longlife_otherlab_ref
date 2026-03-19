@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 import io
 
-# App er title ar layout (wide korle data bhalo dekha jabe)
+# App er title ar layout
 st.set_page_config(page_title="Lab Referral Report Dashboard", layout="wide")
 st.title("📊 Lab Referral Module - Live Report")
 st.write("Niche raw file upload korle report gulo ekhanei toiri hoye jabe.")
@@ -12,15 +12,19 @@ uploaded_file = st.file_uploader("Raw Excel File (.xlsx) upload korun", type=["x
 
 if uploaded_file is not None:
     try:
-        # 1. Raw Data Load Kora
-        df = pd.read_excel(uploaded_file, sheet_name='Sheet1')
+        # 1. Raw Data Load Kora (header=1 dewa holo jate 2nd row theke column name ney)
+        df = pd.read_excel(uploaded_file, sheet_name='Sheet1', header=1)
+        
+        # Column name er aage-piche kono space thakle seta muche felar jonno (Safety)
+        df.columns = df.columns.str.strip()
         
         with st.spinner('Report toiri hochhe...'):
             # 2. Data Cleaning
             if 'Other Lab Refer' in df.columns:
                 df['Other Lab Refer'] = df['Other Lab Refer'].fillna('N.A.')
             else:
-                st.error("'Other Lab Refer' column ti file e nei!")
+                st.error("❌ 'Other Lab Refer' column ti file e nei! Kono banan vul ache kina check korun.")
+                st.write("Apnar file e ei column gulo pawa geche:", df.columns.tolist()) # Error hole theek column naam gulo dekhabe
                 st.stop()
             
             # 3. Calculation Logic 
@@ -74,7 +78,7 @@ if uploaded_file is not None:
             st.dataframe(df, use_container_width=True)
 
         # ---------------------------------------------------------
-        # 6. Optional Download Button (Jodi boss pore download korte chan)
+        # 6. Optional Download Button
         # ---------------------------------------------------------
         st.divider()
         st.write("Jodi Excel format e save korte chan:")
