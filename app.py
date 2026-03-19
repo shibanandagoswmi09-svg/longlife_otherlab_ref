@@ -2,12 +2,12 @@ import streamlit as st
 import pandas as pd
 import io
 
-# App er title ar layout
-st.set_page_config(page_title="Lab Referral Automation", layout="wide")
-st.title("📊 Other Lab Referral Module - Automation")
-st.write("Nicher chhok-e apnar raw excel file (unsolved) upload korun ar autometic solved result download korun.")
+# App er title ar layout (wide korle data bhalo dekha jabe)
+st.set_page_config(page_title="Lab Referral Report Dashboard", layout="wide")
+st.title("📊 Lab Referral Module - Live Report")
+st.write("Niche raw file upload korle report gulo ekhanei toiri hoye jabe.")
 
-# File uploader (Jekhane user raw file upload korbe)
+# File uploader
 uploaded_file = st.file_uploader("Raw Excel File (.xlsx) upload korun", type=["xlsx"])
 
 if uploaded_file is not None:
@@ -15,20 +15,18 @@ if uploaded_file is not None:
         # 1. Raw Data Load Kora
         df = pd.read_excel(uploaded_file, sheet_name='Sheet1')
         
-        st.write("### Raw Data Preview:")
-        st.dataframe(df.head()) # Upload kora data r kichu ongsho dekhabe
-        
-        with st.spinner('Data process hochhe... Ektu opekha korun...'):
+        with st.spinner('Report toiri hochhe...'):
             # 2. Data Cleaning
             if 'Other Lab Refer' in df.columns:
                 df['Other Lab Refer'] = df['Other Lab Refer'].fillna('N.A.')
+            else:
+                st.error("'Other Lab Refer' column ti file e nei!")
+                st.stop()
             
-            # 3. Calculation Logic (Ei percentage gulo apnar dorkar moto change korte paren)
+            # 3. Calculation Logic 
             df['Discount Allowed'] = 0 
-            df['Balance Discount'] = 0.25 # 25% balance discount er jonno
+            df['Balance Discount'] = 0.25 
             df['Net Payable'] = df['Net Amount'] * df['Balance Discount']
-            
-            # Other Lab Refer Payable er basic logic (Commission)
             df['Other Lab Refer Payable'] = df.apply(lambda x: 0 if x['Other Lab Refer'] == 'N.A.' else (x['Net Amount'] * 0.10), axis=1)
 
             # 4. Display Options (Pivot Tables Toiri Kora)
@@ -47,25 +45,54 @@ if uploaded_file is not None:
                                             values=['Gross Amount', 'Discount', 'Net Amount', 'Other Lab Refer Payable'], 
                                             aggfunc='sum').reset_index()
 
-            # 5. Virtual Memory te Excel toiri kora (jate user direct download korte pare)
-            output = io.BytesIO()
-            with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                df.to_excel(writer, sheet_name='Calculation Sheet', index=False)
-                pivot_option_1.to_excel(writer, sheet_name='Display (Option-1)', index=False)
-                pivot_option_2.to_excel(writer, sheet_name='Display (Option-2)', index=False)
-                pivot_option_3.to_excel(writer, sheet_name='Display (Option-3)', index=False)
-            
-            processed_data = output.getvalue()
-            
-        st.success("✅ File successfully solved hoye geche!")
+        st.success("✅ Report successfully generate hoyeche! Nicher tab gulo theke data dekhun.")
+
+        # ---------------------------------------------------------
+        # 5. DASHBOARD VIEW (TABS TOIRI KORA)
+        # ---------------------------------------------------------
+        tab1, tab2, tab3, tab4 = st.tabs([
+            "📋 Option-1 (Summary)", 
+            "📅 Option-2 (Date & Patient)", 
+            "🔬 Option-3 (Investigation)", 
+            "⚙️ Calculation Sheet (Full Data)"
+        ])
+
+        with tab1:
+            st.subheader("Lab Refer Summary")
+            st.dataframe(pivot_option_1, use_container_width=True)
+
+        with tab2:
+            st.subheader("Patient & Date wise Report")
+            st.dataframe(pivot_option_2, use_container_width=True)
+
+        with tab3:
+            st.subheader("Detailed Investigation Report")
+            st.dataframe(pivot_option_3, use_container_width=True)
+
+        with tab4:
+            st.subheader("Full Data with Calculations")
+            st.dataframe(df, use_container_width=True)
+
+        # ---------------------------------------------------------
+        # 6. Optional Download Button (Jodi boss pore download korte chan)
+        # ---------------------------------------------------------
+        st.divider()
+        st.write("Jodi Excel format e save korte chan:")
         
-        # 6. Download Button
+        output = io.BytesIO()
+        with pd.ExcelWriter(output, engine='openpyxl') as writer:
+            df.to_excel(writer, sheet_name='Calculation Sheet', index=False)
+            pivot_option_1.to_excel(writer, sheet_name='Display (Option-1)', index=False)
+            pivot_option_2.to_excel(writer, sheet_name='Display (Option-2)', index=False)
+            pivot_option_3.to_excel(writer, sheet_name='Display (Option-3)', index=False)
+        processed_data = output.getvalue()
+        
         st.download_button(
-            label="📥 Download Solved File",
+            label="📥 Download Excel Report",
             data=processed_data,
-            file_name="Solved_Other_lab_Referral_Result.xlsx",
+            file_name="Live_Report_Other_lab_Referral.xlsx",
             mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         )
         
     except Exception as e:
-        st.error(f"Kono ekta somossa hoyeche, apnar data theek format e ache kina check korun. Error Details: {e}")
+        st.error(f"Kono ekta somossa hoyeche. Error Details: {e}")
